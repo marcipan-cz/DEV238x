@@ -1,0 +1,785 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <title>Bootstrap Example</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="./css/bootstrap.min.css">
+  <link rel="stylesheet" href="./css/Carousel.css">
+
+  <script src="./js/jquery-3.4.1.min.js"></script>
+  <script src="./js/bootstrap.min.js"></script>
+
+
+
+
+  <script src="./js/react.production.min.js"></script> 
+  <script src="./js/react-dom.production.min.js"></script>
+
+  <script src="./js/react-router.min.js"></script>
+  <script src="./js/react-router-dom.min.js"></script>
+  <script src="./js/babel.min.js"></script>
+
+
+
+
+</head>
+<body>
+   
+<div id="root"></div>
+
+<script id="About.js" type="text/babel">
+
+//rubric63:
+function About(){
+  return(
+    <div clasName="col-sm-12">
+        <h1>About</h1>
+        <p>This is a simple shop experiment to try to meet requirements of <b>Microsoft Professional Capstone : Front End Web Development.</b></p>
+        <p>Unfortunately, it is not completed, but I try my luck.</p>
+    </div>
+  )
+}
+
+</script>
+
+<script id="App.js" type="text/babel">
+
+//rubric13: HashRouter is used
+const Router = window.ReactRouterDOM.HashRouter;
+const Route =  window.ReactRouterDOM.Route;
+const Link =  window.ReactRouterDOM.Link;
+//const Prompt =  window.ReactRouterDOM.Prompt;
+const Switch = window.ReactRouterDOM.Switch;
+//const Redirect = window.ReactRouterDOM.Redirect;
+
+
+class App extends React.Component {
+  constructor(props){
+    super(props);
+    this.state = {
+    data: null,
+    toBuy: [],
+    selectedItem: null,
+    };
+  }
+
+  componentDidMount(){
+    fetch('https://webmppcapstone.blob.core.windows.net/data/itemsdata.json')
+      .then(response => {return(response.json())})
+      .then(rawData => {this.setData(rawData)});
+  };
+
+//rubric30: add items to card
+  handleDataChange = (id) => {
+    let tb = this.state.toBuy;
+    tb[id] = tb[id] + 1;
+    this.setState({toBuy: tb});
+  }
+
+  handleDataSet = (e) => {
+    console.log('handleDataSet', e);
+    let tb = this.state.toBuy;
+    tb[e.id] = e.value;
+    this.setState({toBuy: tb});
+  }
+
+  render() {
+    console.log("App:", this.state.toBuy); 
+//rubric09: Route for each product is created by {this.itemRoutes()}
+//rubric12: Route to shop is added
+//rubric13: HashRouter is used by route "/"
+//rubric64:
+//rubric68, rubric72:
+    return (
+      <Router>
+        <div className="container col-sm-12">
+          <Header/>
+          <Switch>
+            <Route exact path="/" render={() => <Home data={this.state.data} selectedItem={this.state.selectedItem}/>} />
+            <Route path="/about" component={About} />
+            <Route path="/cart" render={() => <Cart data={this.state.data} toBuy={this.state.toBuy} />} />
+            {this.itemRoutes()}
+            <Route path="/contact" component={Contact} />
+            <Route path="/shop" render={() => <Shop data={this.state.data} onDataChange={this.handleDataChange}/>} />
+            <Route handler={Home} />
+          </Switch>
+          <Footer/>
+        </div>
+      </Router>
+    );
+
+
+
+  }
+
+//rubric09: to create route for each product
+  itemRoutes(){
+    if(this.state.data !== null){
+      return (
+        this.state.data.items.map((i) =>
+          <Route 
+            path={"/item/" + i.id.toString()}
+            render={() => <Item  data={this.state.data.items[i.id]} toBuy={this.state.toBuy[i.id]} onDataSet={this.handleDataSet}/>}
+          />));
+    } else {
+      return null;
+    };
+  }
+
+  setData(rawData){
+
+    let extracted = {categories: [], subcategories: [], items: []};
+    
+    for(let i = 0; i < rawData.length; i++){
+      extracted.categories.push(rawData[i].category);
+
+      extracted.subcategories[extracted.categories[i]] = [];
+      for(let j = 0; j < rawData[i].subcategories.length; j++){
+        extracted.subcategories[extracted.categories[i]].push(rawData[i].subcategories[j].name);
+
+        extracted.items = extracted.items.concat(rawData[i].subcategories[j].items);
+ 
+      }
+
+    }
+    
+    let toBuy = [];
+    for(let i = 0; i < extracted.items.length; i++){
+      toBuy.push(0);
+      extracted.items[i].id = i;
+    }
+
+    this.setState({data: extracted});
+    this.setState({toBuy: toBuy});
+  }
+
+}
+</script>
+
+<script id="Footer.js" type="text/babel">
+
+function Footer(){
+//rubric73, rubric76: see <Link to="/">Home</Link>
+//rubric74, rubric77: see <Link to="/about">About</Link>
+//rubric75, rubric78: see <Link to="/contact">Contact Us</Link>
+    return(
+        <div className="well col-sm-12 text-right">
+          <div className="col-sm-4">
+            <Link to="/">Home</Link>
+          </div>
+          <div className="col-sm-4">
+            <Link to="/contact">Contact Us</Link>
+          </div>
+          <div className="col-sm-4">
+            <Link to="/about">About</Link>
+          </div>
+        </div>
+    )
+}
+
+</script>
+
+<script id="Home.js" type="text/babel">
+
+class Home extends React.Component {
+  constructor(props){
+    super(props);
+    this.state = {
+      data: null,
+    };
+  };
+
+
+  static getDerivedStateFromProps(props, state) {
+    return({data: props.data});
+  }
+
+//rubric01: Carousel component is added, number of products equlals itemNumber
+//rubric04: Welcoming text <h1>Welcome to our Shop</h1>
+//rubric05: <button type="button" className="btn btn-primary">Shop All</button>
+//rubric10: Speed of carousel is set by interval="3000"
+//rubric12: <Link to="/shop"> ... </Link>
+  render(){
+    return(
+      <div className="col-sm-12">
+        <div className="col-sm-12 text-center">
+         <h1>Welcome to my Shop</h1>
+        </div>
+        <div className="col-sm-12">
+          <Carousel data={this.state.data} itemsNumber = "5" interval="3000"/>
+        </div>
+        <div className="col-sm-12 text-center">
+          <Link to="/shop">
+            <button type="button" className="btn btn-primary">Shop All</button>
+          </Link>
+          <div></div>
+        </div>
+      </div>
+    );
+  }
+}
+
+</script>
+
+<script id="Carousel.js" type="text/babel">
+
+
+class Carousel extends React.Component{
+
+  constructor(props){
+    super(props);
+//rubric06: see rubric10 below
+//rubric10: "Toggle Slide Show" checkbox state is controled by this.state.carouselToggle
+    this.state = {
+      carouselToggle: 1,
+    };
+    this.handleChange = this.handleChange.bind(this);
+  };
+
+//rubric06: to handle events of "Toggle Slide Show" checkbox
+  handleChange(event) {
+    const target = event.target;
+    const value = target.type === 'checkbox' ? target.checked : target.value;
+
+    this.setState({carouselToggle: value});
+//rubric10: Carousel cycle or pause
+   if(!value){
+     $("#homeCarousel").carousel("pause");
+   } else {
+     $("#homeCarousel").carousel("cycle");
+   }
+  }
+
+//rubric02: bootstrap carousel controls are included by <CarouselControls/>
+//rubric03: bootstrap carousel controls are included by <CarouselControls/>
+//rubric06: "Toggle Slide Show" checkbox is included
+//rubric10: Speed of carousel is set by data-interval={this.props.interval}
+//rubric11 class .slide is used for #homeCarousel
+  render(){
+    return (
+      <div id="homeCarousel" className="carousel slide" data-ride="carousel" data-interval={this.props.interval}>
+        <Indicators number={this.props.itemsNumber} />
+        <CarouselSlides data={this.props.data} number={this.props.itemsNumber} />
+        <CarouselControls/>
+        <div>
+          <form>
+            <div className="checkbox text-right">
+              <label><input name="carouselToggle" type="checkbox" checked = {this.state.carouselToggle} onChange={this.handleChange}/>Toggle Slide Show</label>
+            </div>
+          </form>
+        </div>
+      </div>
+    );
+  }
+}
+
+function Indicators(props){
+  let classes = ["active"];
+  let iter = [0];
+  for(let i = 1; i < props.number; i++){
+    classes.push("");
+    iter.push(i);
+  }
+
+  return (
+    <ol class="carousel-indicators">
+      {iter.map(i => <IndicatorsItem className={classes[i]} data-slide-to={i}/>)}
+    </ol>
+  )
+}
+
+function IndicatorsItem(props){
+  return(
+    <li data-target="#homeCarousel" data-slide-to="0" className={props.className}></li>
+  )
+}
+
+//rubric02: bootstrap carousel controls are created
+//rubric03: bootstrap carousel controls are created
+//rubric07: bootstrap carousel functionality is used
+//rubric08: bootstrap carousel functionality is used
+function CarouselControls(){
+  return(
+    <div>
+      <a class="left carousel-control" href="#homeCarousel" data-slide="prev">
+        <span class="glyphicon glyphicon-chevron-left"></span>
+        <span class="sr-only">Previous</span>
+      </a>
+      <a class="right carousel-control" href="#homeCarousel" data-slide="next">
+        <span class="glyphicon glyphicon-chevron-right"></span>
+        <span class="sr-only">Next</span>
+      </a>
+    </div>
+  )
+}
+
+function CarouselSlides(props){
+  let classes = ["item active"];
+  for(let i = 1; i < props.number; i++){
+    classes.push("item");
+  }
+
+  return(
+    <div class="carousel-inner">
+      {classes.map(i => <Slide className={i} data={props.data}/>)}
+    </div>
+  )
+}
+
+function Slide(props){
+  if (props.data === null) {return <div></div>}
+  let slide = props.data.items[Math.floor(Math.random() * (props.data.items.length))];
+//rubric09: Route link is used: <Link to={'/item/' + slide.id.toString()}> ... </Link>
+  return( 
+      <div className={props.className + " carousel-height"}>
+        <Link to={'/item/' + slide.id.toString()}>
+          <div>
+            <img src={slide.imagelink} alt={slide.name} className="carousel-image-height" />
+            <div class="carousel-caption">
+              <h3>{slide.name}</h3>
+              <p>{slide.description}</p>
+            </div>
+          </div>
+        </Link>
+        </div>
+
+  )
+}
+
+</script>
+
+<script id="Cart.js" type="text/babel">
+
+class Cart extends React.Component{
+
+  constructor(props){
+    super(props);
+    this.state = {
+      name: null,
+      address: null,
+      city: null,
+      phonenumber: null,
+      totalcost: null
+    }
+  }
+
+  handleChange = (e) => {
+    this.setState({[e.target.id]: e.target.value});
+  }
+
+  onlyToBuy(){
+    let items = [];
+    for(let i = 0; i < this.props.data.items.length; i++){
+      if(this.props.toBuy[i] > 0){
+        items.push(this.props.data.items[i]);
+      }
+    }
+    return (items);
+  }
+
+//rubric51:
+  handleSubmit = (e) => {
+    console.log(e.target)
+    alert(JSON.stringify(
+      {
+        Name: this.state.name, 
+        Address: this.state.address,
+        City: this.state.city,
+        Number: this.state.phonenumber,
+        Cost: this.state.totalcost,
+      }  
+      )
+    )
+  }
+
+  render(){
+    if(this.props.data === null){return null}
+
+   console.log("cart", this.state);
+
+    const items = this.onlyToBuy();
+//rubric49: 
+    const cost = Math.round(this.onlyToBuy().map((i) => this.props.toBuy[i.id] * i.price).reduce((a, b) => a + b, 0) * 100) / 100;
+    const tax = Math.round((cost * .1)*100)/100;
+
+//rubric47: see <table class="table"> ... </table> below
+//rubric48: see <form> ... </form>
+//rubric49: see <table class="table"> ... </table> below
+//rubric50: see <input type="submit" value="Submit" /> below
+    return(
+      <div>
+        <div className="col-sm-9">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>image</th>
+                <th>name</th>
+                <th> unit price</th>
+                <th>quantity</th>
+                <th>total cost</th>
+                <th>remove button</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((i) =>
+                <tr>
+                  <th><img src={i.imagelink} style={{height: "25px"}}/></th>
+                  <th>{i.name}</th>
+                  <th>{i.price}</th>
+                  <th>{this.props.toBuy[i.id]}</th>
+                  <th>{this.props.toBuy[i.id] * i.price}</th>
+                  <th><button>Remove</button></th>
+              </tr>
+              )}
+              <tr>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th>Subtotal cost</th>
+                <th>{cost}</th>
+              </tr>
+              <tr>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th>Tax</th>
+                <th>{tax}</th>
+              </tr>
+              <tr>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th></th>
+                <th>Shipping cost</th>
+                <th>{cost + tax}</th>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div className="col-sm-3">
+          <form>
+            <h3>Enter Shipping Details</h3>
+            <div class="form-group">
+              <label for="usr">Name:</label>
+              <input type="text" class="form-control" id="usr" value={this.state.usr} onChange={this.handleChange}/>
+            </div>
+            <div class="form-group">
+              <label for="pwd">Address:</label>
+              <input type="address" class="form-control" id="address" value={this.state.address} onChange={this.handleChange}/>
+            </div>
+            <div class="form-group">
+              <label for="pwd">City:</label>
+              <input type="city" class="form-control" id="city" value={this.state.city} onChange={this.handleChange}/>
+            </div>
+            <div class="form-group">
+              <label for="pwd">Phone number:</label>
+              <input type="phonenumber" class="form-control" id="phonenumber" value={this.state.number} onChange={this.handleChange}/>
+            </div>
+            <input type="submit" value="Submit" onClick={this.handleSubmit}/>
+          </form>
+        </div>
+      </div>
+    )
+  }
+
+}
+</script>
+
+<script id="Header.js" type="text/babel">
+
+//rubric65, rubric69: see <Link to="/"><span className="glyphicon glyphicon-home"></span></Link>
+//rubric66, rubric70: see <Link to="/shop"><b>Simpe Shop Experiment</b></Link>
+//rubric67, rubric71: see <Link to="/cart"><span className="glyphicon glyphicon-shopping-cart"></span></Link>
+
+function Header(props){
+    return(
+        <div className="col-sm-12 well">
+            <div className="col-sm-1">
+            <Link to="/"><span className="glyphicon glyphicon-home"></span></Link>
+            </div>
+            <div className="col-sm-10 text-left">
+              <Link to="/shop"><b>Simpe Shop Experiment</b></Link>
+            </div>
+            <div className="col-sm-1 text-right">
+            <Link to="/cart"><span className="glyphicon glyphicon-shopping-cart"></span></Link>
+            </div>
+        </div>
+    )
+}
+
+</script>
+
+<script id="Item.js" type="text/babel">
+
+class Item extends React.Component{
+
+  constructor(props){
+    super(props);
+    this.state = {toBuy: null}
+  };
+
+  //rubric44: handle addition of item to cart
+  handleInputChange = (e) => {
+    console.log("handleInputChange", {value: event.target.value, id: this.props.data.id});
+    this.props.onDataSet({value: event.target.value, id: this.props.data.id});
+  }
+
+
+//rubric35, rubric36, rubric37, rubric38, rubric39, rubric40, rubric41, rubric42, rubric43: see below
+//rubric44: see <form onSubmit={this.handleSubmit}> ... </form>
+//rubric45: <Link to="/shop"> ... </Link>
+  render(){
+console.log('item:', this.props, this.state)
+    return(
+        <div>
+          <div className="col-sm-6">
+            <img src={this.props.data.imagelink} alt={this.props.data.name} style={{width: '350px'}}/>
+          </div>
+          <div className="col-sm-6 well">
+            <h1>{this.props.data.name}</h1>
+            <p>Category: {this.props.data.category}</p>
+            <p>Subcategory: {this.props.data.subcategory}</p>
+            <p>Rating: {this.props.data.name}</p>
+            <p>Description: {this.props.data.description}</p>
+            <p>Price: {this.props.data.price}</p>
+            <p></p>
+            <form onSubmit={this.handleSubmit}>
+              <label>
+                Qty (In stock: {this.props.data.stock}):
+                <input type="text" value={this.props.toBuy} onChange={this.handleInputChange} />
+              </label>
+              <Link to="/cart"><input type="submit" value="Add"/></Link>
+            </form>
+            <Link to="/shop"><button class="btn btn-success">Back</button></Link>
+          </div>
+        </div>
+      )
+    }
+}
+
+</script>
+
+<script id="Shop.js" type="text/babel">
+
+class Shop extends React.Component{
+
+  constructor(props){
+    super(props);
+    this.state = {
+      data: null,
+      selectedCategory: 'All',
+      inStock: true,
+      dropdownValue: "None",
+    }
+
+  };
+
+  static getDerivedStateFromProps(props, state) {
+    return({data: props.data});
+  };
+
+  Dropdown = (e) => {
+    console.log('shop.Dropdown.click', e.target.value);
+    const value = e.target.value;
+    this.setState({dropdownValue: value});
+  }
+
+//rubric30: add item to card
+  handleToCart = (e) => {
+    console.log('shop.subcat.click', e.target.value);
+    this.props.onDataChange(e.target.value);
+  }
+//rubric28: handle checkbox
+  handleInStock = (e) => {
+    const target = e.target;
+    const value = target.type === 'checkbox' ? target.checked : target.value;
+    this.setState({inStock: value});
+  }
+
+  handleSubcategoryClick = (e) => {
+//    console.log('shop.subcat.click', e.target.value);
+    this.setState({selectedCategory: e.target.value});
+//    event.preventDefault();
+  }
+
+//rubric26: filter of subcategories
+  Filtered(){
+    console.log('filtered', this.state.inStock);
+    if(this.state.selectedCategory === 'All') {
+//rubric29: for all
+      if(this.state.inStock){
+        let s = [];
+        for(let i = 0; i < this.state.data.items.length; i++){
+          if(this.state.data.items[i].stock > 0){
+            s.push(this.state.data.items[i])
+          }
+        }
+        return (s);
+      }
+      return (this.state.data.items);
+    } else {
+      let f = [];
+      for(let i = 0; i < this.state.data.items.length; i++){
+        if(this.state.data.items[i].subcategory === this.state.selectedCategory){
+          f.push(this.state.data.items[i])
+        }
+      }
+//rubric29: for selected category
+      if(this.state.inStock){
+        let s = [];
+        for(let i = 0; i < f.length; i++){
+          if(f[i].stock > 0){
+          s.push(f[i])
+        }
+        }
+        return (s);
+      }
+    return (f);
+    }
+  }
+
+//rubric33: sort function
+  Sorted(data){
+    if(this.state.dropdownValue === "None"){
+      return (data);
+    }
+    if(this.state.dropdownValue === "Price"){
+      return (data.sort(
+        (a,b) => {
+          if (a.price < b.price) {return -1;}
+          if (a.price > b.price) {return 1;}
+          return 0;
+        }
+      ));
+    }
+    if(this.state.dropdownValue === "Alphabetical"){
+     return (data.sort(
+      (a,b) => {
+        if (a.name < b.name) {return -1;}
+        if (a.name > b.name) {return 1;}
+        return 0;
+      }
+      ));
+    }
+    if(this.state.dropdownValue === "Rating"){
+     return (data.sort(
+      (a,b) => {
+        if (a.rating > b.rating) {return -1;}
+        if (a.rating < b.rating) {return 1;}
+        return 0;
+      }
+      ));
+    }
+
+  }
+
+  render(){
+    console.log('shop', this.state);
+    if(this.state.data === null){return null};
+//rubric26: applied filter of subcategories
+//rubric33: applied sort function
+    const items = this.Sorted(this.Filtered());
+
+//rubric14: controls bar <div clasName="col-sm-12 well"> ... </div>
+//rubric15: {this.state.selectedCategory}
+//rubric16: {this.state.numberOfItems}
+//rubric17: see the checkbox below
+//rubric18: see the dropdown menu below
+//rubric19: see {this.state.data.categories.map((i) => <li>{i}</li>)} below
+//rubric21, rubric22, rubric23, rubric24: see <div clasName="btn-group"> ... </div>
+//rubric25: by bootstrap, see solution in <div className="col-sm-3 well"> ... </div>
+//rubric27: see Category: <b>{this.state.selectedCategory} ...
+//rubric30: see <button class="btn btn-success" onClick={this.handleToCart} value={i.id}>Add</button>
+//rubric31, rubric32: see <Link to={"/item/" + i.id.toString()}> ... </Link>
+    return(
+        <div>
+          <div className="col-sm-12 well">
+            <div className="col-sm-4">
+              Category: <b>{this.state.selectedCategory}</b>/Items: <b>{items.length}</b>
+            </div>
+            <div className="col-sm-4 text-left checkbox">
+              <label>
+                <input 
+                  name="carouselToggle" 
+                  type="checkbox" 
+                  checked = {this.state.inStock} 
+                  onChange={this.handleInStock}
+                />
+                In Stock Only
+              </label>
+            </div>
+            <div className="col-sm-4 text-right">
+              <div class="dropdown">
+                <select value={this.state.dropdownValue} onChange={this.Dropdown}>
+                  <option value="None">None</option>
+                  <option value="Price">Price</option>
+                  <option value="Alphabetical">Alphabetical</option>
+                  <option value="Rating">Rating</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div className="col-sm-3 well">
+            <ul>
+              {this.state.data.categories.map((i) => 
+                <li>
+                  <a href={"#" + i.split(' ').join('')} data-toggle="collapse">{i}</a>
+                  <div id={i.split(' ').join('')} className="collapse">
+                    <ul>
+                      {this.state.data.subcategories[i].map((j) =>
+                        <li><button className="btn btn-link" onClick={this.handleSubcategoryClick} value={j}>{j}</button></li>
+                      )}
+                    </ul>
+                  </div>
+                </li>
+              )}
+            </ul>
+          </div>
+          <div className="col-sm-9">
+            <div clasName="btn-group">
+              {items.map((i) =>
+                
+                  <button type="button" class="btn btn-default col-sm-6">
+                    <Link to={"/item/" + i.id.toString()}><h3>{i.name}</h3></Link>
+                    <Link to={"/item/" + i.id.toString()}><img src={i.imagelink} style={{height: "50px"}}/></Link>
+                    <div clasName="panel-body">Rating: {i.rating}</div>
+                    <div clasName="panel-body">Price: {i.price}</div>
+                    <button class="btn btn-success" onClick={this.handleToCart} value={i.id}>Add</button>
+                  </button>
+                
+              )}
+            </div>
+          </div>
+        </div>
+    );
+  }
+}
+
+
+
+
+</script>
+
+<script id="index.js" type="text/babel">
+
+function Contact(){
+  return(
+    <div>
+      Not implemented
+    </div>
+  )
+}
+
+</script>
+
+
+<script id="index.js" type="text/babel">
+
+ReactDOM.render(<App />, document.getElementById('root'));
+
+</script>
+</body>
+</html>
